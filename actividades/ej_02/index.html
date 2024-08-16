@@ -3,22 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Actividad #</title>
+    <title>Actividad 2</title>
     <link rel="stylesheet" href="styles/base.css">
 </head>
 <body>
     <header>
-        <h1>Actividad #</h1>
+        <h1>Actividad 2</h1>
     </header>
     <main>
+        <section>
+            <h2>Control de LEDs</h2>
+            <button onclick="toggleLED(1)">LED 1</button>
+            <button onclick="toggleLED(2)">LED 2</button>
+            <button onclick="toggleLED(3)">LED 3</button>
+        </section>
+        <section>
+            <h2>Control de color de la tira LED</h2>
+            <input type="color" id="colorPicker" onchange="setStripColor(this.value)">
+        </section>
     </main>
     <footer>
         <p>Representación Frontal y Visual de Datos</p>
         <p>Computadoras de Aeronaves</p>
-        <p>Alumno XX</p>
+        <p>Alumno Lautaro Esteban</p>
         <p>Prof. Carlassara Fabrizio</p>
         <p id="fecha"></p>
     </footer>
     <script src="scripts/base.js"></script>
+    <script>
+        let ledStates = [false, false, false];
+
+        function toggleLED(ledNum) {
+            ledStates[ledNum-1] = !ledStates[ledNum-1];
+            fetch(`/led?led=${ledNum}&state=${ledStates[ledNum-1]}`)
+                .then(response => response.text())
+                .then(data => console.log(data));
+        }
+
+        function setStripColor(color) {
+            const rgb = hexToRgb(color);
+            fetch(`/color?r=${rgb.r}&g=${rgb.g}&b=${rgb.b}`)
+                .then(response => response.text())
+                .then(data => console.log(data));
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+    </script>
 </body>
 </html>

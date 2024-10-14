@@ -3,22 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Actividad #</title>
+    <title>Actividad 3</title>
     <link rel="stylesheet" href="styles/base.css">
 </head>
 <body>
     <header>
-        <h1>Actividad #</h1>
+        <h1>Actividad 3</h1>
     </header>
     <main>
+        <section>
+            <h2>Control de Temperatura</h2>
+            <label for="setpointSlider">Setpoint de Temperatura: <span id="setpointValue">15</span>°C</label><br>
+            <input type="range" id="setpointSlider" class="slider" min="0" max="30" value="15" oninput="updateSetpointValue(this.value)" onchange="setSetpoint(this.value)">
+        </section>
+        <section>
+            <h2>Temperatura Actual</h2>
+            <label>Temperatura: <span id="currentTemperature">0</span>°C</label>
+        </section>
+        <section>
+            <h2>Estado del Buzzer</h2>
+            <label>Estado: <span id="buzzerState">Apagado</span></label>
+        </section>
     </main>
     <footer>
         <p>Representación Frontal y Visual de Datos</p>
         <p>Computadoras de Aeronaves</p>
-        <p>Alumno XX</p>
+        <p>Alumno Lautaro Esteban</p>
         <p>Prof. Carlassara Fabrizio</p>
         <p id="fecha"></p>
     </footer>
     <script src="scripts/base.js"></script>
+    <script>
+        function updateSetpointValue(value) {
+            document.getElementById("setpointValue").innerText = value;
+        }
+
+        function setSetpoint(value) {
+            fetch(`/setpoint?setpoint=${value}`, { method: 'POST' })
+                .then(response => console.log('Setpoint actualizado'))
+                .catch(err => console.error('Error al actualizar el setpoint', err));
+        }
+
+        function getCurrentTemperature() {
+            fetch('/temperature')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("currentTemperature").innerText = data.temperature.toFixed(2);
+                })
+                .catch(err => console.error('Error al obtener la temperatura', err));
+        }
+
+        function getBuzzerState() {
+            fetch('/buzzer')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("buzzerState").innerText = data.buzzer_state ? "Encendido" : "Apagado";
+                })
+                .catch(err => console.error('Error al obtener el estado del buzzer', err));
+        }
+
+        setInterval(getCurrentTemperature, 2000); // Obtener temperatura cada 2 segundos
+        setInterval(getBuzzerState, 2000); // Obtener estado del buzzer cada 2 segundos
+    </script>
 </body>
 </html>
+

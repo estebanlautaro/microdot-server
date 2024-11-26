@@ -14,11 +14,13 @@
         <section>
             <h2>Control de Temperatura</h2>
             <label for="setpointSlider">Setpoint de Temperatura: <span id="setpointValue">15</span>°C</label><br>
-            <input type="range" id="setpointSlider" class="slider" min="0" max="30" value="15" oninput="updateSetpointValue(this.value)" onchange="setSetpoint(this.value)">
+            <input type="range" id="setpointSlider" class="slider" min="0" max="30" value="15" 
+                   oninput="updateSetpointValue(this.value)" 
+                   onchange="setSetpoint(this.value)">
         </section>
         <section>
             <h2>Temperatura Actual</h2>
-            <label>Temperatura: <span id="currentTemperature">0</span>°C</label>
+            <label>Temperatura: <span id="currentTemperature">No disponible</span>°C</label>
         </section>
         <section>
             <h2>Estado del Buzzer</h2>
@@ -32,7 +34,6 @@
         <p>Prof. Carlassara Fabrizio</p>
         <p id="fecha"></p>
     </footer>
-    <script src="scripts/base.js"></script>
     <script>
         function updateSetpointValue(value) {
             document.getElementById("setpointValue").innerText = value;
@@ -40,7 +41,13 @@
 
         function setSetpoint(value) {
             fetch(`/setpoint?setpoint=${value}`, { method: 'POST' })
-                .then(response => console.log('Setpoint actualizado'))
+                .then(response => {
+                    if (response.ok) {
+                        console.log('Setpoint actualizado');
+                    } else {
+                        console.error('Error al actualizar el setpoint');
+                    }
+                })
                 .catch(err => console.error('Error al actualizar el setpoint', err));
         }
 
@@ -48,7 +55,8 @@
             fetch('/temperature')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById("currentTemperature").innerText = data.temperature.toFixed(2);
+                    const tempElement = document.getElementById("currentTemperature");
+                    tempElement.innerText = data.temperature !== "No disponible" ? data.temperature.toFixed(2) : "No disponible";
                 })
                 .catch(err => console.error('Error al obtener la temperatura', err));
         }
@@ -62,9 +70,8 @@
                 .catch(err => console.error('Error al obtener el estado del buzzer', err));
         }
 
-        setInterval(getCurrentTemperature, 2000); // Obtener temperatura cada 2 segundos
-        setInterval(getBuzzerState, 2000); // Obtener estado del buzzer cada 2 segundos
+        setInterval(getCurrentTemperature, 2000);
+        setInterval(getBuzzerState, 2000);
     </script>
 </body>
 </html>
-

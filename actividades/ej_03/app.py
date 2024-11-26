@@ -1,62 +1,80 @@
-import network
-import socket
-import json
+from microdot import Microdot, Response
 import machine
+import onewire
+import ds18x20
+import json
 from time import sleep
 import _thread
 
-buzzer = machine.Pin(15, machine.Pin.OUT)
-temperature_sensor = machine.ADC(machine.Pin(32))
-temperature_sensor.atten(machine.ADC.ATTN_11DB)
+datapin = machine.Pin(19)
+ds_sensor = ds18x20.DS18X20(onewire.OneWire(datapin))
 
-setpoint_temp = 0
+buzzer = machine.Pin(14, machine.Pin.OUT)
 
-def web_server():
-    addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
-    s = socket.socket()
-    s.bind(addr)
-    s.listen(1)
+setpoint_temp = 15
+current_temp = None
+roms = None
 
-    print('Listening on', addr)
+app = Microdot()
 
-    while True:
-        cl, addr = s.accept()
-        print('Client connected from', addr)
-        request = cl.recv(1024)
-        request = str(request)
-        
-        if "GET /temperature" in request:
-            current_temp = (temperature_sensor.read() / 4095) * 100
-            response = json.dumps({"temperature": current_temp})
-            cl.send('HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n' + response)
+@app.route('/temperature')
+def get_temperature(request):
+    global current_temp
+    temp = current_temp if current_temp is not None else "No disponible"
+    return Response(json.dumps({"temperature": temp}), headers={'Content-Type': 'application/json'})
 
-        elif "POST /setpoint" in request:
-            setpoint_start = request.find('setpoint=') + len('setpoint=')
-            setpoint_end = request.find(' ', setpoint_start)
-            global setpoint_temp
-            setpoint_temp = int(request[setpoint_start:setpoint_end])
-            cl.send('HTTP/1.1 200 OK\r\n\r\n')
-        
-        elif "GET /buzzer" in request:
-            response = json.dumps({"buzzer_state": buzzer.value()})
-            cl.send('HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n' + response)
+@app.route('/setpoint', methods=['POST'])
+def set_setpoint(request):
+    global setpoint_temp
+    try:
+        setpoint_temp = int(request.args.get('setpoint', 0))
+        print(f"Setpoint actualizado: {setpoint_temp}°C")
+        return Response('', status_code=200)
+    except ValueError:
+        return Response(json.dumps({"error": "Setpoint inválido"}), status_code=400, headers={'Content-Type': 'application/json'})
 
-        elif "GET / " in request or "GET /index.html" in request:
-            with open("index.html", "r") as f:
-                html_content = f.read()
-            cl.send('HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n' + html_content)
-        
-        cl.close()
+@app.route('/buzzer')
+def get_buzzer(request):
+    return Response(json.dumps({"buzzer_state": buzzer.value()}), headers={'Content-Type': 'application/json'})
+
+@app.route('/')
+def index(request):
+    with open('index.html', 'r') as f:
+        html_content = f.read()
+    return Response(html_content, headers={'Content-Type': 'text/html'})
 
 def temperature_monitor():
-    global setpoint_temp
+    global current_temp, setpoint_temp, roms
+    roms = ds_sensor.scan()
+    if not roms:
+        print("Sensor DS18X20 no detectado")
+    
     while True:
-        current_temp = (temperature_sensor.read() / 4095) * 100
-        if current_temp > setpoint_temp:
+        if roms:
+            try:
+                ds_sensor.convert_temp()
+                sleep(1)
+                temp_readings = []
+
+                for _ in range(5):
+                    temp_readings.append(ds_sensor.read_temp(roms[0]))
+                    sleep(0.1)
+
+                current_temp = sum(temp_readings) / len(temp_readings)
+                print(f"Temperatura promedio: {current_temp:.2f}°C")
+            except Exception as e:
+                print(f"Error al leer el sensor: {e}")
+                current_temp = None
+        else:
+            current_temp = None
+
+        if current_temp is not None and current_temp > setpoint_temp:
             buzzer.value(1)
         else:
             buzzer.value(0)
+
         sleep(1)
 
 _thread.start_new_thread(temperature_monitor, ())
-web_server()
+
+app.run(host='0.0.0.0', port=80)

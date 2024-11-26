@@ -5,14 +5,12 @@ import machine
 from time import sleep
 import _thread
 
-# Pin Setup
-buzzer = machine.Pin(15, machine.Pin.OUT)  # Configura el buzzer en el pin GPIO15
-temperature_sensor = machine.ADC(machine.Pin(32))  # Sensor de temperatura en GPIO32
-temperature_sensor.atten(machine.ADC.ATTN_11DB)  # Para obtener un rango completo de voltaje
+buzzer = machine.Pin(15, machine.Pin.OUT)
+temperature_sensor = machine.ADC(machine.Pin(32))
+temperature_sensor.atten(machine.ADC.ATTN_11DB)
 
-setpoint_temp = 0  # Variable global para almacenar la temperatura de setpoint
+setpoint_temp = 0
 
-# Servidor Web
 def web_server():
     addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
     s = socket.socket()
@@ -27,9 +25,8 @@ def web_server():
         request = cl.recv(1024)
         request = str(request)
         
-        # Parsing HTTP request
         if "GET /temperature" in request:
-            current_temp = (temperature_sensor.read() / 4095) * 100  # Simulación de temperatura
+            current_temp = (temperature_sensor.read() / 4095) * 100
             response = json.dumps({"temperature": current_temp})
             cl.send('HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n' + response)
 
@@ -51,17 +48,15 @@ def web_server():
         
         cl.close()
 
-# Thread para monitorizar la temperatura y el buzzer
 def temperature_monitor():
     global setpoint_temp
     while True:
-        current_temp = (temperature_sensor.read() / 4095) * 100  # Simulación de temperatura
+        current_temp = (temperature_sensor.read() / 4095) * 100
         if current_temp > setpoint_temp:
-            buzzer.value(1)  # Encender buzzer si la temperatura excede el setpoint
+            buzzer.value(1)
         else:
-            buzzer.value(0)  # Apagar buzzer si la temperatura está por debajo del setpoint
+            buzzer.value(0)
         sleep(1)
 
-# Iniciar el servidor y el monitor en paralelo
 _thread.start_new_thread(temperature_monitor, ())
 web_server()
